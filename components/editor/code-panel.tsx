@@ -56,7 +56,19 @@ const CodePanel: React.FC<CodePanelProps> = ({ themeEditorState, themeId }) => {
   );
   const getAvailableColorFormats = usePreferencesStore((state) => state.getAvailableColorFormats);
 
-  const code = generateThemeCode(themeEditorState, colorFormat, tailwindVersion);
+  const presetData = useThemePresetStore((state) => (preset ? state.getPreset(preset) : undefined));
+  const themeName = preset || "default";
+  const themeLabel = presetData?.label || themeName;
+  const themeDescription = "";
+
+  const code = generateThemeCode(
+    themeEditorState,
+    colorFormat,
+    tailwindVersion,
+    themeName,
+    themeLabel,
+    themeDescription
+  );
   const configCode = generateTailwindConfigCode(themeEditorState, colorFormat, tailwindVersion);
   const layoutCode = generateLayoutCode(themeEditorState);
 
@@ -81,7 +93,9 @@ const CodePanel: React.FC<CodePanelProps> = ({ themeEditorState, themeId }) => {
 
   const copyRegistryCommand = async () => {
     try {
-      await navigator.clipboard.writeText(getRegistryCommand(registryId ?? "default", isRegistrySaved));
+      await navigator.clipboard.writeText(
+        getRegistryCommand(registryId ?? "default", isRegistrySaved)
+      );
       setRegistryCopied(true);
       setTimeout(() => setRegistryCopied(false), 2000);
       captureCopyEvent("COPY_REGISTRY_COMMAND");
@@ -171,7 +185,9 @@ const CodePanel: React.FC<CodePanelProps> = ({ themeEditorState, themeId }) => {
             {showRegistryCommand ? (
               <ScrollArea className="w-full">
                 <div className="overflow-y-hidden pb-2 whitespace-nowrap">
-                  <code className="font-mono text-sm">{getRegistryCommand(registryId as string, isRegistrySaved)}</code>
+                  <code className="font-mono text-sm">
+                    {getRegistryCommand(registryId as string, isRegistrySaved)}
+                  </code>
                 </div>
                 <ScrollBar orientation="horizontal" />
               </ScrollArea>
@@ -294,11 +310,7 @@ const CodePanel: React.FC<CodePanelProps> = ({ themeEditorState, themeId }) => {
 
         <TabsContent value="layout.tsx" className="overflow-hidden">
           <ScrollArea className="relative h-full">
-            <CodeBlock
-              code={layoutCode}
-              language="tsx"
-              className="h-full rounded-none border-0"
-            />
+            <CodeBlock code={layoutCode} language="tsx" className="h-full rounded-none border-0" />
             <ScrollBar orientation="horizontal" />
             <ScrollBar orientation="vertical" />
           </ScrollArea>

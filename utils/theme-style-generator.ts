@@ -98,9 +98,13 @@ const generateTrackingVariables = (themeStyles: ThemeStyles): string => {
 const generateThemeVariables = (
   themeStyles: ThemeStyles,
   mode: ThemeMode,
-  formatColor: (color: string) => string
+  formatColor: (color: string) => string,
+  themeName: string,
+  themeLabel?: string,
+  themeDescription?: string
 ): string => {
-  const selector = mode === "dark" ? ".dark" : ":root";
+  const selector =
+    mode === "dark" ? `[data-theme="${themeName}"].dark` : `[data-theme="${themeName}"]`;
   const colorVars = generateColorVariables(themeStyles, mode, formatColor);
   const fontVars = generateFontVariables(themeStyles, mode);
   const radiusVar = `\n  --radius: ${themeStyles[mode].radius};`;
@@ -118,9 +122,15 @@ const generateThemeVariables = (
       ? `\n  --tracking-normal: ${themeStyles["light"]["letter-spacing"] ?? defaultLightThemeStyles["letter-spacing"]};`
       : "";
 
+  const themeMetaVars =
+    mode === "light"
+      ? `\n  --theme-label: "${themeLabel ?? themeName}";\n  --theme-description: "${themeDescription ?? ""}";`
+      : "";
+
   return (
     selector +
     " {" +
+    themeMetaVars +
     colorVars +
     fontVars +
     radiusVar +
@@ -277,7 +287,10 @@ const indentBlock = (str: string): string =>
 export const generateThemeCode = (
   themeEditorState: ThemeEditorState,
   colorFormat: ColorFormat = "hsl",
-  tailwindVersion: "3" | "4" = "3"
+  tailwindVersion: "3" | "4" = "3",
+  overrideThemeName?: string,
+  overrideThemeLabel?: string,
+  overrideThemeDescription?: string
 ): string => {
   if (
     !themeEditorState ||
@@ -290,56 +303,28 @@ export const generateThemeCode = (
   const themeStyles = themeEditorState.styles as ThemeStyles;
   const formatColor = (color: string) => colorFormatter(color, colorFormat, tailwindVersion);
 
-  const lightTheme = generateThemeVariables(themeStyles, "light", formatColor);
-  const darkTheme = generateThemeVariables(themeStyles, "dark", formatColor);
+  const themeName = overrideThemeName || themeEditorState.themeName || "default";
+  const themeLabel = overrideThemeLabel || themeEditorState.themeLabel || themeName;
+  const themeDescription = overrideThemeDescription || themeEditorState.themeDescription || "";
 
-  if (tailwindVersion === "4") {
-    const tailwindV4Theme = generateTailwindV4ThemeInline(themeStyles);
+  const lightTheme = generateThemeVariables(
+    themeStyles,
+    "light",
+    formatColor,
+    themeName,
+    themeLabel,
+    themeDescription
+  );
+  const darkTheme = generateThemeVariables(
+    themeStyles,
+    "dark",
+    formatColor,
+    themeName,
+    themeLabel,
+    themeDescription
+  );
 
-    const bodyLetterSpacing =
-      themeStyles["light"]["letter-spacing"] !== "0em"
-        ? "\n    letter-spacing: var(--tracking-normal);"
-        : "";
-
-    return `@import "tailwindcss";
-
-@custom-variant dark (&:is(.dark *));
-
-${lightTheme}
-
-${darkTheme}
-
-${tailwindV4Theme}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;${bodyLetterSpacing}
-  }
-}`;
-  }
-
-  // Tailwind v3
-  return `@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@layer base {
-${indentBlock(lightTheme)}
-
-${indentBlock(darkTheme)}
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}`;
+  return `${lightTheme}\n\n${darkTheme}`;
 };
 
 export const generateTailwindConfigCode = (
