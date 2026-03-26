@@ -43,17 +43,17 @@ export function CheckoutButton({ disabled, className, ...props }: CheckoutButton
     startTransition(async () => {
       const res = await createCheckout();
 
-      if ("error" in res || !res.url) {
-        toast({
-          title: "Error",
-          description: res.error || "Failed to create checkout",
-          variant: "destructive",
-        });
+      if ("url" in res && res.url) {
+        queryClient.invalidateQueries({ queryKey: [SUBSCRIPTION_STATUS_QUERY_KEY] });
+        router.push(res.url);
         return;
       }
 
-      queryClient.invalidateQueries({ queryKey: [SUBSCRIPTION_STATUS_QUERY_KEY] });
-      router.push(res.url);
+      toast({
+        title: "Error",
+        description: "error" in res ? res.error : "Failed to create checkout",
+        variant: "destructive",
+      });
     });
   };
 
